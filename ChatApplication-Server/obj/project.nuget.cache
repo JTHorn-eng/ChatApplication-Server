@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "3aLH86OLV5bN3IoX669BsNAln5CDAaf8uGjqoqjyfqxPfTgV7THZ8iIvfC0/sCIZDewx2uPyE3mXMeU3aphrQw==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\horn1\\source\\repos\\ChatApplication-Server\\ChatApplication-Server\\ChatApplication-Server\\ChatApplication-Server.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\horn1\\.nuget\\packages\\system.data.sqlite.core\\1.0.113.1\\system.data.sqlite.core.1.0.113.1.nupkg.sha512"
+  ],
+  "logs": []
+}
