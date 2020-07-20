@@ -9,7 +9,7 @@ namespace ChatServer
     {
         SQLiteConnection connection;
         Dictionary<int, List<string>> databaseObjects;
-        private const string server_messages_location = @"URI=file:C:\Users\horn1\source\repos\ChatApplication-Server\database\Users.db";
+        private const string server_messages_location = @"URI=file:C:\Users\horn1\source\repos\ChatApplication-Server\ChatApplication-Server\database\Users.db";
 
         public ServerDatabase()
         {
@@ -20,8 +20,9 @@ namespace ChatServer
         public string retrieveClientMessages(string name = "PersonA")
         {
 
-            connection = new SQLiteConnection();
-            string commandText = "SELECT * FROM Users WHERE name='" + name + "'";
+            connection = new SQLiteConnection(server_messages_location);
+            connection.Open();
+            string commandText = "SELECT * FROM UserMessages WHERE Sender='" + name + "'";
             SQLiteCommand select = new SQLiteCommand(commandText, connection);
             SQLiteDataReader rdr = select.ExecuteReader();
             Console.WriteLine("Retrieving values from server_messages");
@@ -37,6 +38,7 @@ namespace ChatServer
                         + rdr.GetString(4);          //Timestamp
                 }
             }
+            connection.Close();
             return message;
             }
         }
