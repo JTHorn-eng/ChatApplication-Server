@@ -116,11 +116,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\horn1\\source\\repos\\ChatApplication-Server\\ChatApplication-Server\\ChatApplication-Server\\ChatApplication-Server.csproj",
+      "projectUniqueName": "C:\\Users\\horn1\\source\\repos\\ChatApplication-Server\\ChatApplication-Server\\ChatApplication-Server.csproj",
       "projectName": "ChatApplication-Server",
-      "projectPath": "C:\\Users\\horn1\\source\\repos\\ChatApplication-Server\\ChatApplication-Server\\ChatApplication-Server\\ChatApplication-Server.csproj",
+      "projectPath": "C:\\Users\\horn1\\source\\repos\\ChatApplication-Server\\ChatApplication-Server\\ChatApplication-Server.csproj",
       "packagesPath": "C:\\Users\\horn1\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\horn1\\source\\repos\\ChatApplication-Server\\ChatApplication-Server\\ChatApplication-Server\\obj\\",
+      "outputPath": "C:\\Users\\horn1\\source\\repos\\ChatApplication-Server\\ChatApplication-Server\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
