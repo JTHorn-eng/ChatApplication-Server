@@ -2,28 +2,23 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices.ComTypes;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace ChatApplication_Server
 {
-    class ServerSecurity
+    public static class ServerSecurity
     {
 
-
-        private byte[] unencryptedSymmetricKey = null;
-        private UnicodeEncoding ByteConverter = new UnicodeEncoding();
-        private RSACryptoServiceProvider RSA = new RSACryptoServiceProvider();
-        //Retrieve AES symmetric key from database
-        public void decryptAESKey(ServerDatabase sd, string username) 
-        {
-            string info = sd.RetrieveAESSymmetricKey(username);
-            Console.WriteLine("Retrieved database info: " + info);
-            unencryptedSymmetricKey = RSADecryption(ByteConverter.GetBytes(info.Split(":")[2]), RSA.ExportParameters(false), false);
-        }
+         
+        private static byte[] unencryptedSymmetricKey = null;
+        private static UnicodeEncoding ByteConverter = new UnicodeEncoding();
+        private static RSACryptoServiceProvider RSA = new RSACryptoServiceProvider();
+        
 
         //AES Encrypt
-        public byte[] EncryptStringToBytes_Aes(string plainText, byte[] key, byte[] IV)
+        public static byte[] EncryptStringToBytes_Aes(string plainText, byte[] key, byte[] IV)
         {
             if (plainText.Length <= 0 || key.Length <= 0 || IV.Length <= 0)
             {
@@ -52,7 +47,7 @@ namespace ChatApplication_Server
         }
 
         //AES Decrypt
-        public string DecryptBytesToString_Aes(byte[] cipherText, byte[] key, byte[] IV)
+        public static string DecryptBytesToString_Aes(byte[] cipherText, byte[] key, byte[] IV)
         {
             string plainText = null;
             if (cipherText.Length <= 0 || key.Length <= 0 || IV.Length <= 0)
@@ -83,7 +78,7 @@ namespace ChatApplication_Server
 
 
         //RSA Encrypt
-        public byte[] RSAEncryption(byte[] Data, RSAParameters RSAKey, bool DoOAEPPadding)
+        public static byte[] RSAEncryption(byte[] Data, RSAParameters RSAKey, bool DoOAEPPadding)
         {
             try
             {
@@ -102,7 +97,7 @@ namespace ChatApplication_Server
 
 
         //RSA Decrypt
-        public byte[] RSADecryption(byte[] Data, RSAParameters RSAKey, bool DoOAEPPadding)
+        public static byte[] RSADecryption(byte[] Data, RSAParameters RSAKey, bool DoOAEPPadding)
         {
             try
             {
@@ -119,22 +114,43 @@ namespace ChatApplication_Server
             return null;
         }
 
-       
-        public byte[] generateDigitalSignature(string plainText)
+        //RSA create public/private key pair
+        //Save key pair in server key container
+        public static string GenKey(string containerName)
+        {
+
+            //Create crypto service provider parameters
+            CspParameters p = new CspParameters();
+            p.KeyContainerName = containerName;
+
+            //Create new key container.
+            RSACryptoServiceProvider rsa = new RSACryptoServiceProvider(p);
+            rsa.PersistKeyInCsp = false;
+
+            rsa.Clear();
+            CspParameters p2 = new CspParameters();
+            p.KeyContainerName = containerName;
+
+            RSACryptoServiceProvider rsa2 = new RSACryptoServiceProvider(p2);
+            Console.WriteLine("Generated new RSA key pair, saved in " + containerName);
+            return rsa2.ToXmlString(true);
+        }
+        public static string RetrieveKeyPair(string containerName)
+        {
+            CspParameters p = new CspParameters();
+            p.KeyContainerName = containerName;
+
+            RSACryptoServiceProvider rsa = new RSACryptoServiceProvider(p);
+            Console.WriteLine("Retrieved RSA key pair from " + containerName);
+            return rsa.ToXmlString(true);
+        }
+
+
+        public static byte[] generateDigitalSignature(string plainText)
         {
             //hash message
             HashAlgorithm sha = new SHA1CryptoServiceProvider();
             return sha.ComputeHash(Encoding.UTF8.GetBytes(plainText));
         }
-
-
-
-
-
-
-
-
-
-
     }
 }
