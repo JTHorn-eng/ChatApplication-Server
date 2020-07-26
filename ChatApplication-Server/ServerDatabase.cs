@@ -21,27 +21,32 @@ namespace ChatServer
         //add public key to database
         public static void addPublicKey(string username, string key)
         {
-            if (username != null || username != "")
+            Console.WriteLine("[INFO] Adding new public key to database, username: " + username);
+            if (username != null || !(username.Equals("")))
             {
                 SQLiteConnection connection = new SQLiteConnection(server_keys_location);
                 connection.Open();
-                string commandText = "INSERT INTO Keys(Username, Key) VALUES (" + username + ", " + key + ");";
+                string commandText = "INSERT INTO Keys(Username, Key) VALUES ('" + username + "','" + key + "');";
                 SQLiteCommand insert = new SQLiteCommand(commandText, connection);
+                insert.ExecuteNonQuery();
                 connection.Close();
+
             }
         }
 
         //check if username exists
         public static bool usernameExists(string name = "")
         {
+            bool hasRows = false;
             SQLiteConnection connection = new SQLiteConnection(server_keys_location);
             connection.Open();
             string commandText = "SELECT * FROM Keys WHERE Username = '" + name + "';";
             SQLiteCommand select = new SQLiteCommand(commandText, connection);
             SQLiteDataReader rdr = select.ExecuteReader();
-            connection.Close();
+            Console.WriteLine("[INFO] hasRows: " + rdr.HasRows);
+            hasRows = rdr.HasRows;
+            return hasRows;
 
-            return rdr.HasRows;
         }
 
 
@@ -89,8 +94,8 @@ namespace ChatServer
                 message = "";
                 while (rdr.Read())
                 {
-                    message += rdr.GetString(1) + ":"     //Username
-                             + rdr.GetString(2) + ":";     //Key
+                    message += rdr.GetString(0) + ":"     //Username
+                             + rdr.GetString(1) + ":";     //Key
 
                 }
             }

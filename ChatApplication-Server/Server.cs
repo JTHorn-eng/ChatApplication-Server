@@ -120,7 +120,6 @@ public static class Server
 
         //check if username exists in server database, they must have a public key if they exist
         bool pubKeyPresent = ServerDatabase.usernameExists(state.userName);
-
         if (!pubKeyPresent)
         {
             Console.WriteLine("[INFO] Sending key request to client");
@@ -134,13 +133,13 @@ public static class Server
 
             // Client responds with "PUBKEY: dummy_key<EOF>"
             // We parse this string and store it in the client's state object
-            state.pubKey = ((((pubKeyResponse.Split(":"))[1]).Split("<"))[0]).Trim();
+            Console.WriteLine(pubKeyResponse);
+            //state.pubKey = ((((pubKeyResponse.Split(":"))[1]).Split("<"))[0]).Trim();
+            state.pubKey = (pubKeyResponse.Replace("PUBKEY:", "").Replace(" <EOF>", ""));
+            Console.WriteLine("[INFO] Public key for client is " + state.pubKey);
 
             //Add public key to database
-            if (state.pubKey != null || state.pubKey == "")
-            {
-                ServerDatabase.addPublicKey(state.userName, state.pubKey);
-            }
+            ServerDatabase.addPublicKey(state.userName, state.pubKey);
 
         }
         else
@@ -153,12 +152,11 @@ public static class Server
             state.pubKey = ServerDatabase.RetrieveRSAPublicKey(state.userName);
         }
 
-        Console.WriteLine("[INFO] Public key for client is " + state.pubKey);
 
         Console.WriteLine("[INFO] Sending new messages to client");
 
         // TODO: Fetch and send new messages for this user from the database
-        Send(handler, "MESSAGES:"+ ServerDatabase.retrieveClientMessages(state.userName)+ "<EOF>");
+        Send(handler, "MESSAGES:"+ ServerDatabase.retrieveClientMessages(state.userName) + "<EOF>");
     }
 
     // Receive data from a client. Blocks parent thread execution
