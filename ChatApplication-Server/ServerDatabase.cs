@@ -1,109 +1,117 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data.SQLite;
 
 namespace ChatServer
 {
     public static class ServerDatabase
     {
-        private static Dictionary<int, List<string>> databaseObjects;
-        private const string server_messages_location = @"URI=file:C:\Users\laure\Documents\Repos\TornadoServer\ChatApplication-Server\ChatApplication-Server\database\Users.db";
-        private const string server_keys_location = @"URI=file:C:\Users\laure\Documents\Repos\TornadoServer\ChatApplication-Server\ChatApplication-Server\database\SymmetricKeys.db";
+        private const string MessagesDBLocation = @"URI=file:C:\ChatAppServer\Messages.db";
+        private const string PubKeysDBLocation = @"URI=file:C:\ChatAppServer\PubKeys.db";
 
+        // Get the 
         private static String GetTimestamp(this DateTime value)
         {
             return value.ToString("yyyyMMddHHmmssfff");
         }
 
-
-
-        //add public key to database
-        public static void addPublicKey(string username, string key)
+        // Adds the public key for a user to the public key database
+        public static void AddPublicKey(string username, string key)
         {
-            Console.WriteLine("[INFO] Adding new public key to database, username: " + username);
             if (username != null || !(username.Equals("")))
             {
-                SQLiteConnection connection = new SQLiteConnection(server_keys_location);
+                SQLiteConnection connection = new SQLiteConnection(PubKeysDBLocation);
                 connection.Open();
                 string commandText = "INSERT INTO Keys(Username, Key) VALUES ('" + username + "','" + key + "');";
                 SQLiteCommand insert = new SQLiteCommand(commandText, connection);
                 insert.ExecuteNonQuery();
                 connection.Close();
-
             }
         }
 
-        //check if username exists
-        public static bool usernameExists(string name = "")
+        // Check if a user exists in the public key database
+        public static bool UsernameExists(string name = "")
         {
-            bool hasRows = false;
-            SQLiteConnection connection = new SQLiteConnection(server_keys_location);
+            // Set up the connection and query
+            SQLiteConnection connection = new SQLiteConnection(PubKeysDBLocation);
             connection.Open();
             string commandText = "SELECT * FROM Keys WHERE Username = '" + name + "';";
             SQLiteCommand select = new SQLiteCommand(commandText, connection);
-            SQLiteDataReader rdr = select.ExecuteReader();
-            Console.WriteLine("[INFO] hasRows: " + rdr.HasRows);
-            hasRows = rdr.HasRows;
-            return hasRows;
 
+            // Set up the reader
+            SQLiteDataReader rdr = select.ExecuteReader();
+
+            // Check if the reader has any data associated with it since this is synonomous to the user having an entry in the public key database 
+            return rdr.HasRows;
         }
 
-
-        //find message objects for user in server database
-        public static string retrieveClientMessages(string name = "")
+        // Returns all encrypted message object strings from the messages DB, where a given user is the recipient
+        // Message objects are separated by semicolons
+        // Also deletes the message records from the DB so they aren't sent twice
+        // Returns an empty string if there are no messages for the user
+        public static string RetrieveUserMessages(string username = "")
         {
-            //retrieve current timestamp
-            string currentTimestamp = ServerDatabase.GetTimestamp(new DateTime());
-            SQLiteConnection connection = new SQLiteConnection(server_messages_location);
+            // Set up the connection and query
+            SQLiteConnection connection = new SQLiteConnection(MessagesDBLocation);
             connection.Open();
-            string commandText = "SELECT * FROM UserMessages WHERE Sender='" + name + "' AND Timestamp < + '" + currentTimestamp + "';";
+            string commandText = "SELECT * FROM UserMessages WHERE Recipient='" + username + "';";
             SQLiteCommand select = new SQLiteCommand(commandText, connection);
-            SQLiteDataReader rdr = select.ExecuteReader();
-            string message = "";
 
+            // Set up the reader we can use to pull message records in turn
+            SQLiteDataReader rdr = select.ExecuteReader();
+
+            string messagesString = "";
+
+            // Return a blank string if there are no messages for the user
+            if(!rdr.HasRows)
+            {
+                return "";
+            }
+
+            // Continually read message records from the database to compile all the message objects into a string
             while (rdr.Read())
             {
-                message += rdr.GetInt32(0) + ":" //ID
-                    + rdr.GetString(1) + ":"     //Sender
-                    + rdr.GetString(2) + ":"     //Receiver
-                    + rdr.GetString(3) + ":"     //Content
-                    + rdr.GetString(4);          //Timestamp
+                messagesString += rdr.GetString(2) + ";";
             }
+
+            // Delete the sent message records from the database
+            commandText = "DELETE * FROM UserMessages WHERE Recipient='" + username + "';";
+            SQLiteCommand delete = new SQLiteCommand(commandText, connection);
+            delete.ExecuteNonQuery();
+
+            // Close up and return
             connection.Close();
-            return message;
+            return messagesString;
         }
 
 
 
-        //find RSA public key for a client pair
-        public static string RetrieveRSAPublicKey(string name = "")
+        // Retrieve the public key for a user from the public key DB
+        public static string RetrievePublicKey(string username = "")
         {
-            SQLiteConnection connection = new SQLiteConnection(server_keys_location);
+
+            // Set up the connection and query
+            SQLiteConnection connection = new SQLiteConnection(PubKeysDBLocation);
             connection.Open();
-            string commandText = "SELECT * FROM Keys WHERE Username = '" + name + "';";
+            string commandText = "SELECT * FROM Keys WHERE Username = '" + username + "';";
             SQLiteCommand select = new SQLiteCommand(commandText, connection);
+
+            // Set up the reader we can use to pull the public key record
             SQLiteDataReader rdr = select.ExecuteReader();
-            Console.WriteLine("Retrieving AES symmetric key for user: " + name);
+
             string message = "NO_KEY_PAIR_FOUND";
+
             if (rdr.HasRows)
             {
                 message = "";
                 while (rdr.Read())
                 {
-                    message += rdr.GetString(0) + ":"     //Username
-                             + rdr.GetString(1) + ":";     //Key
-
+                    message += rdr.GetString(1);
                 }
             }
+
+            // Close up and return
             connection.Close();
             return message;
         }
-
-        public static Dictionary<int, List<string>> getUserMessageObjects()
-        {
-            return databaseObjects;
-        }
     }
 }
-    
-
