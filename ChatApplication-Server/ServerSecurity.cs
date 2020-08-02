@@ -1,17 +1,13 @@
-﻿using ChatServer;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.IO;
-using System.Runtime.InteropServices.ComTypes;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace ChatApplication_Server
+namespace ChatServer
 {
     public static class ServerSecurity
     {
 
-         
         private static byte[] unencryptedSymmetricKey = null;
         private static UnicodeEncoding ByteConverter = new UnicodeEncoding();
         private static RSACryptoServiceProvider RSA = new RSACryptoServiceProvider();

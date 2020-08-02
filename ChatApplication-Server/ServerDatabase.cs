@@ -1,15 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
-using System.Runtime.CompilerServices;
 
 namespace ChatServer
 {
     public static class ServerDatabase
     {
         private static Dictionary<int, List<string>> databaseObjects;
-        private const string server_messages_location = @"URI=file:C:\Users\horn1\source\repos\ChatApplication-Server\ChatApplication-Server\database\Users.db";
-        private const string server_keys_location = @"URI=file:C:\Users\horn1\source\repos\ChatApplication-Server\ChatApplication-Server\database\SymmetricKeys.db";
+        private const string server_messages_location = @"URI=file:C:\Users\laure\Documents\Repos\TornadoServer\ChatApplication-Server\ChatApplication-Server\database\Users.db";
+        private const string server_keys_location = @"URI=file:C:\Users\laure\Documents\Repos\TornadoServer\ChatApplication-Server\ChatApplication-Server\database\SymmetricKeys.db";
 
         private static String GetTimestamp(this DateTime value)
         {
@@ -60,7 +59,6 @@ namespace ChatServer
             string commandText = "SELECT * FROM UserMessages WHERE Sender='" + name + "' AND Timestamp < + '" + currentTimestamp + "';";
             SQLiteCommand select = new SQLiteCommand(commandText, connection);
             SQLiteDataReader rdr = select.ExecuteReader();
-            Console.WriteLine("Retrieving values from server_messages");
             string message = "";
 
             while (rdr.Read())
@@ -71,8 +69,6 @@ namespace ChatServer
                     + rdr.GetString(3) + ":"     //Content
                     + rdr.GetString(4);          //Timestamp
             }
-
-            Console.WriteLine("Message:" + message);
             connection.Close();
             return message;
         }
