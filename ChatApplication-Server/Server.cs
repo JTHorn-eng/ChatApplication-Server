@@ -133,6 +133,13 @@ namespace ChatServer
                         break;
                     }
 
+                    // Check if there are new messages in the database for the user
+                    string newMessages = ServerDatabase.RetrieveUserMessages(state.userName);
+                    if(newMessages != "")
+                    {
+                        Send(handler, "MESSAGES:" + newMessages + "<EOF>");
+                    }
+
                     // Check whether we've received data from the client (but do not wait)
                     dataReceived = receiveDone.WaitOne(0);
 
@@ -172,7 +179,7 @@ namespace ChatServer
             Console.WriteLine("[INFO] Client username is " + state.userName);
 
             // Check if the client's username exists in the public key database (and so whether they have a public key)
-            bool pubKeyPresent = ServerDatabase.usernameExists(state.userName);
+            bool pubKeyPresent = ServerDatabase.UsernameExists(state.userName);
             
             if (!pubKeyPresent)
             {
@@ -190,8 +197,10 @@ namespace ChatServer
                 state.pubKey = (pubKeyResponse.Replace("PUBKEY:", "").Replace("<EOF>", ""));
                 Console.WriteLine("[INFO] Public key for client is " + state.pubKey);
 
+                Console.WriteLine("[INFO] Adding public key to the database");
+
                 // Add public key to database
-                ServerDatabase.addPublicKey(state.userName, state.pubKey);
+                ServerDatabase.AddPublicKey(state.userName, state.pubKey);
 
             }
             else
@@ -201,13 +210,13 @@ namespace ChatServer
                 Console.WriteLine("[INFO] Retrieving public key for client from database");
 
                 // Retrieve the pub key from the database and store it in the state object
-                state.pubKey = ServerDatabase.RetrieveRSAPublicKey(state.userName);
+                state.pubKey = ServerDatabase.RetrievePublicKey(state.userName);
             }
 
             Console.WriteLine("[INFO] Sending new messages to client");
 
             // Fetch and send new messages for this user from the database
-            Send(handler, "MESSAGES:" + ServerDatabase.retrieveClientMessages(state.userName) + "<EOF>");
+            Send(handler, "MESSAGES:" + ServerDatabase.RetrieveUserMessages(state.userName) + "<EOF>");
 
             // Add client's username and state object to dictionary
             connectedClients.Add(state.userName, state);
