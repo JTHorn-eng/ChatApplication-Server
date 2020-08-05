@@ -7,8 +7,8 @@ namespace ChatServer
     public static class ServerDatabase
     {
         private static Dictionary<int, List<string>> databaseObjects;
-        private const string server_messages_location = @"URI=file:C:\Users\laure\Documents\Repos\TornadoServer\ChatApplication-Server\ChatApplication-Server\database\Users.db";
-        private const string server_keys_location = @"URI=file:C:\Users\laure\Documents\Repos\TornadoServer\ChatApplication-Server\ChatApplication-Server\database\SymmetricKeys.db";
+        private const string server_messages_location = @"URI=file:C:\Users\horn1\source\repos\ChatApplication-Server\ChatApplication-Server\database\Users.db";
+        private const string server_keys_location = @"URI=file:C:\Users\horn1\source\repos\ChatApplication-Server\ChatApplication-Server\database\SymmetricKeys.db";
 
         private static String GetTimestamp(this DateTime value)
         {
