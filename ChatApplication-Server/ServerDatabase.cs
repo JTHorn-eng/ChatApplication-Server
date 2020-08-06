@@ -75,7 +75,7 @@ namespace ChatServer
             }
 
             // Delete the sent message records from the database
-            commandText = "DELETE * FROM UserMessages WHERE Recipient='" + username + "';";
+            commandText = "DELETE FROM UserMessages WHERE Recipient='" + username + "';";
             SQLiteCommand delete = new SQLiteCommand(commandText, connection);
             delete.ExecuteNonQuery();
 
