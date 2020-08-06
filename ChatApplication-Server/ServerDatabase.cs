@@ -82,8 +82,10 @@ namespace ChatServer
         {
             SQLiteConnection connection = new SQLiteConnection(MessagesDBLocation);
             connection.Open();
-            string commandText = "INSERT INTO UserMessages(Recipient, Content) VALUES ('" + recipient + "','" + content + "');";
+            string commandText = "INSERT INTO UserMessages(Recipient, Content) VALUES (@recipient,@content);";
             SQLiteCommand insert = new SQLiteCommand(commandText, connection);
+            insert.Parameters.AddWithValue("@recipient", recipient);
+            insert.Parameters.AddWithValue("@content", content);
             insert.ExecuteNonQuery();
             connection.Close();
         }
