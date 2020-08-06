@@ -9,12 +9,6 @@ namespace ChatServer
         private const string MessagesDBLocation = @"URI=file:C:\ChatAppServer\Messages.db";
         private const string PubKeysDBLocation = @"URI=file:C:\ChatAppServer\PubKeys.db";
 
-        // Get the 
-        private static String GetTimestamp(this DateTime value)
-        {
-            return value.ToString("yyyyMMddHHmmssfff");
-        }
-
         // Adds the public key for a user to the public key database
         public static void AddPublicKey(string username, string key)
         {
@@ -84,7 +78,15 @@ namespace ChatServer
             return messagesString;
         }
 
-
+        public static void AddUserMessages(string recipient, string content)
+        {
+            SQLiteConnection connection = new SQLiteConnection(MessagesDBLocation);
+            connection.Open();
+            string commandText = "INSERT INTO UserMessages(Recipient, Content) VALUES ('" + recipient + "','" + content + "');";
+            SQLiteCommand insert = new SQLiteCommand(commandText, connection);
+            insert.ExecuteNonQuery();
+            connection.Close();
+        }
 
         // Retrieve the public key for a user from the public key DB
         public static string RetrievePublicKey(string username = "")
@@ -114,5 +116,7 @@ namespace ChatServer
             connection.Close();
             return message;
         }
+
+
     }
 }

@@ -157,7 +157,14 @@ namespace ChatServer
                     state.sb = new StringBuilder();
                     state.buffer = new byte[StateObject.BufferSize];
 
-                    Console.WriteLine("[INFO] Client says:" + data);
+
+                    // Client sends messages in the following format: "MESSAGES:recipient;content<EOF>"
+                    // Parse out the recipient and content and add the message to the DB
+                    string recipient = data.Split(":")[1].Split(";")[0];
+                    string content = data.Split(":")[1].Split(";")[1].Replace("<EOF>", "");
+
+                    Console.WriteLine("[INFO] New message received for " + recipient + ". Message contents: " + content + ". Adding to DB...");
+                    ServerDatabase.AddUserMessages(recipient, content);
                 }
             }
         }
