@@ -5,7 +5,7 @@ using System.Text;
 
 namespace ChatServer
 {
-    public static class ServerSecurity
+    public static class Security
     {
 
         private static byte[] unencryptedSymmetricKey = null;

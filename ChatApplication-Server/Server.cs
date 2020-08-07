@@ -13,28 +13,37 @@ namespace ChatServer
     {
         // Client socket
         public Socket workSocket = null;
+
         // Chat username for client
         public string userName = "";
+
         // Public key for client
         public string pubKey = "";
+
         // Size of receive buffer
         public const int BufferSize = 1024;
+
         // Receive buffer
         public byte[] buffer = new byte[BufferSize];
+
         // Received data string
         public StringBuilder sb = new StringBuilder();
+
+        // MREs for signalling when threads may proceed
+        public readonly ManualResetEvent receiveDone = new ManualResetEvent(false);
+        public readonly ManualResetEvent sendDone = new ManualResetEvent(false);
     }
 
     // Functions as an async socket listener
     // Use with Server.Start()
     public static class Server
     {
-        // MREs for signalling when threads may proceed
-        private static ManualResetEvent connectionDone = new ManualResetEvent(false);
-        private static ManualResetEvent receiveDone = new ManualResetEvent(false);
-        private static ManualResetEvent sendDone = new ManualResetEvent(false);
+        // Basic settings
         private const int ListenPort = 8182;
         private const int MaxClients = 100;
+
+        // MRE for signalling when connection to a client is done
+        private static readonly ManualResetEvent connectionDone = new ManualResetEvent(false);
 
         // Dictionary to store StateObjects for all connected clients, referenced by username
         private static Dictionary<string, StateObject> connectedClients = new Dictionary<string, StateObject>();
@@ -92,26 +101,33 @@ namespace ChatServer
             Socket handler = listener.EndAccept(ar);
 
             // Create the state object for this client
-            StateObject state = new StateObject();
-            state.workSocket = handler;
+            StateObject state = new StateObject
+            {
+                workSocket = handler
+            };
 
             // Connection all established now. Perform handshake to get client established
             ChatHandshake(state);
 
             bool connectionClosed = false;
 
-            // Keep listening for new messages from the client until the client closes the connection
+            // Runs while the client remains connected. Does the following regularly:
+            // - Receives and handles incoming messages from the client
+            // - Checks for and sends new messages in the DB for the client
+            // - Checks whether the client is still connected and closes up if not
             while (!connectionClosed)
             {
                 // Set up a callback for when the client begins sending data
                 handler.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
 
                 // Reset the MRE so we can detect when we've finished receiving data
-                receiveDone.Reset();
+                state.receiveDone.Reset();
 
                 bool dataReceived = false;
 
-                // Runs while we wait for and receive data from the client
+                // Runs repeatedly while we wait for and receieve data from the client. Does the following:
+                // - Checks for and sends new messages in the DB for the client
+                // - Checks whether the client is still connected and closes up if not
                 while (!dataReceived)
                 {
                     // Check if the client has disconnected
@@ -133,15 +149,18 @@ namespace ChatServer
                         break;
                     }
 
-                    // Check if there are new messages in the database for the user
-                    string newMessages = ServerDatabase.RetrieveUserMessages(state.userName);
+                    // Retrieve new messages for the user from the DB and then delete them from the DB
+                    string newMessages = Database.RetrieveAndDeleteUserMessages(state.userName);
+
+                    // If we have new messages
                     if(newMessages != "")
                     {
-                        Send(handler, "MESSAGES:" + newMessages + "<EOF>");
+                        // Send the new messages to the client
+                        Send(state, "MESSAGES:sender;" + newMessages + ";9<EOF>");
                     }
 
                     // Check whether we've received data from the client (but do not wait)
-                    dataReceived = receiveDone.WaitOne(0);
+                    dataReceived = state.receiveDone.WaitOne(0);
 
                     // Repeat these checks every 100ms
                     Thread.Sleep(100);
@@ -150,21 +169,20 @@ namespace ChatServer
                 // If we've got data from the client (i.e. the connection wasn't closed)
                 if (dataReceived)
                 {
-                    // Get the received data
-                    string data = state.sb.ToString();
+                    // Get the received message
+                    string message = state.sb.ToString();
 
                     // Reset the client's buffer so we can receive more data from it
                     state.sb = new StringBuilder();
                     state.buffer = new byte[StateObject.BufferSize];
 
-
                     // Client sends messages in the following format: "MESSAGES:recipient;content<EOF>"
                     // Parse out the recipient and content and add the message to the DB
-                    string recipient = data.Split(":")[1].Split(";")[0];
-                    string content = data.Split(":")[1].Split(";")[1].Replace("<EOF>", "");
+                    string recipient = message.Split(":")[1].Split(";")[0];
+                    string content = message.Split(":")[1].Split(";")[1].Replace("<EOF>", "");
 
                     Console.WriteLine("[INFO] New message received for " + recipient + ". Message contents: " + content + ". Adding to DB...");
-                    ServerDatabase.AddUserMessages(recipient, content);
+                    Database.AddUserMessages(recipient, content);
                 }
             }
         }
@@ -179,14 +197,14 @@ namespace ChatServer
             // Receive chat username from client
             string clientIDResponse = Receive(state);
 
-            // Client responds with "IDENTIFICATION: dummy_name<EOF>"
+            // Client responds with "IDENTIFICATION:dummy_name<EOF>"
             // We parse this string and store it in the client's state object
-            state.userName = ((((clientIDResponse.Split(":"))[1]).Split("<"))[0]).Trim();
+            state.userName = clientIDResponse.Split(":")[1].Replace("<EOF>", "");
 
             Console.WriteLine("[INFO] Client username is " + state.userName);
 
             // Check if the client's username exists in the public key database (and so whether they have a public key)
-            bool pubKeyPresent = ServerDatabase.UsernameExists(state.userName);
+            bool pubKeyPresent = Database.CheckUsernameKnown(state.userName);
             
             if (!pubKeyPresent)
             {
@@ -194,7 +212,7 @@ namespace ChatServer
 
                 // This is a new client. We haven't got a public key for it
                 // Ask the client to generate a key pair and send us the public key
-                Send(handler, "KEY_GEN_REQUEST: <EOF>");
+                Send(state, "KEY_GEN_REQUEST:<EOF>");
 
                 // Wait for pub key
                 string pubKeyResponse = Receive(state);
@@ -207,8 +225,7 @@ namespace ChatServer
                 Console.WriteLine("[INFO] Adding public key to the database");
 
                 // Add public key to database
-                ServerDatabase.AddPublicKey(state.userName, state.pubKey);
-
+                Database.AddPublicKey(state.userName, state.pubKey);
             }
             else
             {
@@ -217,13 +234,13 @@ namespace ChatServer
                 Console.WriteLine("[INFO] Retrieving public key for client from database");
 
                 // Retrieve the pub key from the database and store it in the state object
-                state.pubKey = ServerDatabase.RetrievePublicKey(state.userName);
+                state.pubKey = Database.GetPublicKey(state.userName);
             }
 
             Console.WriteLine("[INFO] Sending new messages to client");
 
             // Fetch and send new messages for this user from the database
-            Send(handler, "MESSAGES:" + ServerDatabase.RetrieveUserMessages(state.userName) + "<EOF>");
+            Send(state, "MESSAGES:" + Database.RetrieveAndDeleteUserMessages(state.userName) + "<EOF>");
 
             // Add client's username and state object to dictionary
             connectedClients.Add(state.userName, state);
@@ -236,13 +253,13 @@ namespace ChatServer
             Socket handler = state.workSocket;
 
             // Reset the MRE so we pause until the client responds
-            receiveDone.Reset();
+            state.receiveDone.Reset();
 
             // Set up a callback for when the client begins sending data
             handler.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
 
             // Wait for the client to be received
-            receiveDone.WaitOne();
+            state.receiveDone.WaitOne();
 
             // Get the received data
             string data = state.sb.ToString();
@@ -254,7 +271,7 @@ namespace ChatServer
             return data;
         }
 
-        // Callback to handle receiving data from client
+        // Callback to handle receiving data from the client
         public static void ReceiveCallback(IAsyncResult ar)
         {
             // Retrieve the state object and the handler socket
@@ -273,7 +290,7 @@ namespace ChatServer
                 if (state.sb.ToString().IndexOf("<EOF>") > -1)
                 {
                     // We've got all the data so let the parent thread proceed if it's waiting for the data
-                    receiveDone.Set();
+                    state.receiveDone.Set();
 
                     // The parent thread can get the data receieved with state.sb.ToString();
                 }
@@ -286,29 +303,33 @@ namespace ChatServer
         }
 
         // Send data to a client. Blocks thread execution
-        private static void Send(Socket handler, String data)
+        private static void Send(StateObject state, String data)
         {
+            // Get the listener socket
+            Socket handler = state.workSocket;
+
             // Convert the string to send into byte data using ASCII encoding
             byte[] byteData = Encoding.ASCII.GetBytes(data);
 
             // Reset the MRE so we pause until sending is completed
-            sendDone.Reset();
+            state.sendDone.Reset();
 
             // Begin sending the data to the client
-            handler.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(SendCallback), handler);
+            handler.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(SendCallback), state);
 
             // Wait for the data to be sent
-            sendDone.WaitOne();
+            state.sendDone.WaitOne();
         }
 
         // Callback to handle sending data to the client
         private static void SendCallback(IAsyncResult ar)
         {
+            // Retrieve the state object and handler socket
+            StateObject state = (StateObject)ar.AsyncState;
+            Socket handler = state.workSocket;
+
             try
             {
-                // Retrieve the handler socket 
-                Socket handler = (Socket)ar.AsyncState;
-
                 // Complete sending the data to the client
                 int bytesSent = handler.EndSend(ar);
             }
@@ -318,7 +339,7 @@ namespace ChatServer
             }
 
             // We've sent the data so let the parent thread proceed
-            sendDone.Set();
+            state.sendDone.Set();
         }
     }
 }
