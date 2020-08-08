@@ -156,7 +156,7 @@ namespace ChatServer
                     if(newMessages != "")
                     {
                         // Send the new messages to the client
-                        Send(state, "MESSAGES:sender;" + newMessages + ";9<EOF>");
+                        Send(state, "MESSAGES:sender|" + newMessages + "|<EOF>");
                     }
 
                     // Check whether we've received data from the client (but do not wait)
@@ -176,10 +176,24 @@ namespace ChatServer
                     state.sb = new StringBuilder();
                     state.buffer = new byte[StateObject.BufferSize];
 
-                    // Client sends messages in the following format: "MESSAGES:recipient;content<EOF>"
+                    // Client sends messages in the following format: "MESSAGES<SOR>recipient<EOR><SOT>content<EOT><EOF>"
                     // Parse out the recipient and content and add the message to the DB
-                    string recipient = message.Split(":")[1].Split(";")[0];
-                    string content = message.Split(":")[1].Split(";")[1].Replace("<EOF>", "");
+
+                    Console.WriteLine("Message: " + message);
+
+                    string recipient = "";
+                    for (int x = message.IndexOf("<SOR>") + "<SOR>".Length; x < message.LastIndexOf("<EOR>"); x++)
+                    {
+                        recipient += message[x];
+                    }
+
+
+                    Console.WriteLine(message);
+                    string content = "";
+                    for (int x = message.IndexOf("<SOT>") + "<SOT>".Length; x < message.LastIndexOf("<EOT>"); x++)
+                    {
+                        content += message[x];
+                    }
 
                     Console.WriteLine("[INFO] New message received for " + recipient + ". Message contents: " + content + ". Adding to DB...");
                     Database.AddUserMessages(recipient, content);
