@@ -1,4 +1,5 @@
-﻿using System.Data.SQLite;
+﻿using System;
+using System.Data.SQLite;
 
 namespace ChatServer
 {
@@ -55,6 +56,9 @@ namespace ChatServer
 
             // Close up and return
             connection.Close();
+
+            Console.WriteLine("[INFO] fjshfjghasf: " + pubKey);
+
             return pubKey;
         }
 

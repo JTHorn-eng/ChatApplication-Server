@@ -80,7 +80,6 @@ namespace ChatServer
                     // Client connected. Now reset the MRE so we pause next loop while waiting for another client
                     connectionDone.Reset();
                 }
-
             }
             catch (Exception e)
             {
@@ -113,6 +112,7 @@ namespace ChatServer
 
             // Runs while the client remains connected. Does the following regularly:
             // - Receives and handles incoming messages from the client
+            // - Sends recipient public key for encryption
             // - Checks for and sends new messages in the DB for the client
             // - Checks whether the client is still connected and closes up if not
             while (!connectionClosed)
@@ -152,11 +152,13 @@ namespace ChatServer
                     // Retrieve new messages for the user from the DB and then delete them from the DB
                     string newMessages = Database.RetrieveAndDeleteUserMessages(state.userName);
 
+                    
+
                     // If we have new messages
                     if(newMessages != "")
                     {
                         // Send the new messages to the client
-                        Send(state, "MESSAGES:sender|" + newMessages + "|<EOF>");
+                        Send(state, "MESSAGES:<SOR>" + state.userName + "<EOR><SOT>" + newMessages + "<EOT><EOF>");
                     }
 
                     // Check whether we've received data from the client (but do not wait)
@@ -169,12 +171,32 @@ namespace ChatServer
                 // If we've got data from the client (i.e. the connection wasn't closed)
                 if (dataReceived)
                 {
+
                     // Get the received message
                     string message = state.sb.ToString();
 
                     // Reset the client's buffer so we can receive more data from it
                     state.sb = new StringBuilder();
                     state.buffer = new byte[StateObject.BufferSize];
+
+
+
+                    //If client message is a request for recipient public key instead of a normal message
+                    if (message.LastIndexOf("<SOT>") == -1)
+                    {
+                        Console.WriteLine("[INFO] Sending public key for recipient ");
+                        Console.WriteLine("Message: " + message);
+
+                        Console.WriteLine("User: " + message.Split(":")[0]);
+                        //Get recipient's public key
+                        string recPub = Database.GetPublicKey(message.Split(':')[0]);
+
+                        Console.WriteLine("[INFO] Key Obtained: "+ recPub);
+
+
+                        //Send public key
+                        Send(state, recPub + "<EOF>");
+                    }
 
                     // Client sends messages in the following format: "MESSAGES<SOR>recipient<EOR><SOT>content<EOT><EOF>"
                     // Parse out the recipient and content and add the message to the DB
@@ -186,7 +208,6 @@ namespace ChatServer
                     {
                         recipient += message[x];
                     }
-
 
                     Console.WriteLine(message);
                     string content = "";
@@ -258,6 +279,21 @@ namespace ChatServer
 
             // Add client's username and state object to dictionary
             connectedClients.Add(state.userName, state);
+
+            //Attempt to receive recipient public key from database
+            string recipientPubKeyRequest = Receive(state);
+
+
+            if (recipientPubKeyRequest.IndexOf("KEY_REQUEST") > -1)
+            {
+                Console.WriteLine("[INFO] Received recipient key request from client: " + recipientPubKeyRequest);
+
+                //If a key request has been made by the client 
+                //Send the recipient key for RSA encryption
+                Send(state, Database.GetPublicKey(recipientPubKeyRequest) + "<EOF>");
+            }
+
+
         }
 
         // Receive data from a client. Blocks parent thread execution

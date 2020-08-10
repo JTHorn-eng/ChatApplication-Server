@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data.SQLite;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -141,6 +142,7 @@ namespace ChatServer
             return rsa.ToXmlString(true);
         }
 
+        
 
         public static byte[] generateDigitalSignature(string plainText)
         {
