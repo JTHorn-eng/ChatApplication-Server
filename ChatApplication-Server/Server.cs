@@ -152,8 +152,6 @@ namespace ChatServer
                     // Retrieve new messages for the user from the DB and then delete them from the DB
                     string newMessages = Database.RetrieveAndDeleteUserMessages(state.userName);
 
-                    
-
                     // If we have new messages
                     if(newMessages != "")
                     {
@@ -178,8 +176,6 @@ namespace ChatServer
                     // Reset the client's buffer so we can receive more data from it
                     state.sb = new StringBuilder();
                     state.buffer = new byte[StateObject.BufferSize];
-
-
 
                     //If client message is a request for recipient public key instead of a normal message
                     if (message.LastIndexOf("<SOT>") == -1)
