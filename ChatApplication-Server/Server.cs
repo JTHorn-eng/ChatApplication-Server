@@ -240,7 +240,9 @@ namespace ChatServer
 
             // Check if the client's username exists in the public key database (and so whether they have a public key)
             bool pubKeyPresent = Database.CheckUsernameKnown(state.userName);
-            
+
+            Console.WriteLine("ASDASDASD" + pubKeyPresent);
+
             if (!pubKeyPresent)
             {
                 Console.WriteLine("[INFO] Sending key request to client");
