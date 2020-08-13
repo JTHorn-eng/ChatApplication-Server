@@ -37,7 +37,7 @@ namespace ChatServer
             connection.Open();
 
             // Set up the query and insert the username value
-            string commandText = "SELECT * FROM Keys WHERE Username = '@username';";
+            string commandText = "SELECT * FROM Keys WHERE Username = @username;";
             SQLiteCommand selectCommand = new SQLiteCommand(commandText, connection);
             selectCommand.Parameters.AddWithValue("@username", username);
 

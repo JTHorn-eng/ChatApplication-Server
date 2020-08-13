@@ -46,7 +46,7 @@ namespace ChatServer
         private static readonly ManualResetEvent connectionDone = new ManualResetEvent(false);
 
         // Dictionary to store StateObjects for all connected clients, referenced by username
-        private static Dictionary<string, StateObject> connectedClients = new Dictionary<string, StateObject>();
+        private static readonly Dictionary<string, StateObject> connectedClients = new Dictionary<string, StateObject>();
 
         // Initialises connection to client then keeps listening for data from client
         public static void Start()
@@ -180,40 +180,38 @@ namespace ChatServer
                     //If client message is a request for recipient public key instead of a normal message
                     if (message.LastIndexOf("<SOT>") == -1)
                     {
-                        Console.WriteLine("[INFO] Sending public key for recipient ");
-                        Console.WriteLine("Message: " + message);
-
-                        Console.WriteLine("User: " + message.Split(":")[0]);
                         //Get recipient's public key
-                        string recPub = Database.GetPublicKey(message.Split(':')[0]);
+                        string recPub = Database.GetPublicKey(message.Replace("KEY_REQUEST:","").Replace("<EOF>",""));
 
                         Console.WriteLine("[INFO] Key Obtained: "+ recPub);
 
 
                         //Send public key
-                        Send(state, recPub + "<EOF>");
+                        Send(state, "REQUESTED_PUB_KEY:" + recPub + "<EOF>");
                     }
-
-                    // Client sends messages in the following format: "MESSAGES<SOR>recipient<EOR><SOT>content<EOT><EOF>"
-                    // Parse out the recipient and content and add the message to the DB
-
-                    Console.WriteLine("Message: " + message);
-
-                    string recipient = "";
-                    for (int x = message.IndexOf("<SOR>") + "<SOR>".Length; x < message.LastIndexOf("<EOR>"); x++)
+                    else
                     {
-                        recipient += message[x];
-                    }
+                        // Client sends messages in the following format: "MESSAGES<SOR>recipient<EOR><SOT>content<EOT><EOF>"
+                        // Parse out the recipient and content and add the message to the DB
 
-                    Console.WriteLine(message);
-                    string content = "";
-                    for (int x = message.IndexOf("<SOT>") + "<SOT>".Length; x < message.LastIndexOf("<EOT>"); x++)
-                    {
-                        content += message[x];
-                    }
+                        Console.WriteLine("Message: " + message);
 
-                    Console.WriteLine("[INFO] New message received for " + recipient + ". Message contents: " + content + ". Adding to DB...");
-                    Database.AddUserMessages(recipient, content);
+                        string recipient = "";
+                        for (int x = message.IndexOf("<SOR>") + "<SOR>".Length; x < message.LastIndexOf("<EOR>"); x++)
+                        {
+                            recipient += message[x];
+                        }
+
+                        Console.WriteLine(message);
+                        string content = "";
+                        for (int x = message.IndexOf("<SOT>") + "<SOT>".Length; x < message.LastIndexOf("<EOT>"); x++)
+                        {
+                            content += message[x];
+                        }
+
+                        Console.WriteLine("[INFO] New message received for " + recipient + ". Message contents: " + content + ". Adding to DB...");
+                        Database.AddUserMessages(recipient, content);
+                    }
                 }
             }
         }
@@ -273,25 +271,10 @@ namespace ChatServer
             Console.WriteLine("[INFO] Sending new messages to client");
 
             // Fetch and send new messages for this user from the database
-            Send(state, "MESSAGES:" + Database.RetrieveAndDeleteUserMessages(state.userName) + "<EOF>");
+            Send(state, "MESSAGES:<SOR>" + state.userName + "<EOR><SOT>" + Database.RetrieveAndDeleteUserMessages(state.userName) + "<EOT><EOF>");
 
             // Add client's username and state object to dictionary
             connectedClients.Add(state.userName, state);
-
-            //Attempt to receive recipient public key from database
-            string recipientPubKeyRequest = Receive(state);
-
-
-            if (recipientPubKeyRequest.IndexOf("KEY_REQUEST") > -1)
-            {
-                Console.WriteLine("[INFO] Received recipient key request from client: " + recipientPubKeyRequest);
-
-                //If a key request has been made by the client 
-                //Send the recipient key for RSA encryption
-                Send(state, Database.GetPublicKey(recipientPubKeyRequest) + "<EOF>");
-            }
-
-
         }
 
         // Receive data from a client. Blocks parent thread execution
